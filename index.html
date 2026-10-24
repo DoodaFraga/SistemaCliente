@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Clientes - Loja de Tintas Criador Douglas Fraga</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- Barra de Ferramentas Superior (Estilo Applix/HGM) -->
+    <nav class="sistema-nav">
+        <div class="nav-brand">🎨 Tintas Control Criado Douglas Fraga</div>
+        <div class="nav-status">Sistema Local Pronto</div>
+    </nav>
+
+    <div class="container">
+        <!-- Painel de Controle de Arquivos -->
+        <div class="painel-controle">
+            <div class="card-upload">
+                <h3>📥 Importar Abaixo</h3>
+                <p>Selecione seu arquivo Excel <strong></strong></p>
+                <input type="file" id="arquivo-csv" accept=".csv">
+            </div>
+
+            <!-- Cartões de Estatísticas Rápidas -->
+            <div class="cards-status">
+                <div class="card-mini">
+                    <span class="titulo-mini">Total de Clientes</span>
+                    <span id="stat-clientes" class="valor-mini">0</span>
+                </div>
+                <div class="card-mini">
+                    <span class="titulo-mini">Produtos Cadastrados</span>
+                    <span id="stat-produtos" class="valor-mini">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de Pesquisa Dinâmica -->
+        <div class="secao-busca">
+            <input type="text" id="campo-pesquisa" placeholder="🔍 Digite o Nome, CPF ou Produto para buscar na base..." disabled>
+        </div>
+
+        <!-- Tabela de Dados Simplificada -->
+        <div class="tabela-container">
+            <table id="tabela-clientes">
+                <thead>
+                    <tr>
+                        <th>Cliente / Nome</th>
+                        <th>CPF / CNPJ</th>
+                        <th>Produtos Comprados</th>
+                        <th>Total em Compras</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-tabela">
+                    <tr>
+                        <td colspan="4" class="tabela-vazia">Nenhum arquivo importado. Selecione um arquivo CSV acima para começar.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
