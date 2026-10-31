@@ -1,120 +1,98 @@
-// Memória local ultra rápida para guardar os clientes importados
-let bancoClientes = [];
+let dadosClientes = [];
 
-// Escutar o evento de seleção de arquivo
-document.getElementById('arquivo-csv').addEventListener('change', lerArquivoCSV);
-
-// Escutar o evento de digitação na barra de pesquisa
-document.getElementById('campo-pesquisa').addEventListener('input', filtrarDados);
-
-function lerArquivoCSV(evento) {
-    const arquivo = evento.target.files[0]; // Correção para pegar o primeiro arquivo selecionado
+document.getElementById('arquivo-csv').addEventListener('change', function(e) {
+    const arquivo = e.target.files[0];
     if (!arquivo) return;
 
     const leitor = new FileReader();
-    
     leitor.onload = function(e) {
-        processarCSV(e.target.result);
-    };
+        const linhas = e.target.result.split(/\r?\n/);
+        if (linhas.length <= 1) return;
 
-    leitor.readAsText(arquivo, 'UTF-8');
-}
+        const separador = linhas[0].includes(';') ? ';' : ',';
+        
+        // Mapeamento fixo direto e ultra leve do cabeçalho
+        const cabecalho = linhas[0].split(separador).map(c => c.trim().toLowerCase());
+        const idxNome = cabecalho.findIndex(c => c.includes('nome') || c.includes('cliente'));
+        const idxCpf = cabecalho.findIndex(c => c.includes('cpf') || c.includes('cnpj'));
+        const idxProduto = cabecalho.findIndex(c => c.includes('produto') || c.includes('item'));
+        const idxValor = cabecalho.findIndex(c => c.includes('valor') || c.includes('total'));
+        const idxData = cabecalho.findIndex(c => c.includes('data'));
 
-function processarCSV(texto) {
-    // Quebra por linhas de forma ultra rápida
-    const linhas = texto.split(/\r?\n/);
-    if (linhas.length === 0) return;
+        dadosClientes = [];
+        const produtosSet = new Set();
 
-    const primeiraLinha = linhas[0];
-    const separador = primeiraLinha.includes(';') ? ';' : ',';
-    const cabecalhos = primeiraLinha.split(separador).map(c => c.trim().toUpperCase());
+        // Loop puro, limpo e direto sem travas
+        for (let i = 1; i < linhas.length; i++) {
+            const linha = linhas[i].trim();
+            if (!linha) continue;
 
-    const idxNome = cabecalhos.findIndex(c => c.includes('NOME') || c.includes('CLIENTE'));
-    const idxCpf = cabecalhos.findIndex(c => c.includes('CPF') || c.includes('CNPJ'));
-    const idxProdutos = cabecalhos.findIndex(c => c.includes('PRODUTO') || c.includes('COMPRAS'));
-    const idxTotal = cabecalhos.findIndex(c => c.includes('TOTAL') || c.includes('VALOR') || c.includes('PRECO'));
+            const colunas = linha.split(separador);
+            
+            const cliente = {
+                nome: idxNome !== -1 && colunas[idxNome] ? colunas[idxNome].trim() : '',
+                cpf: idxCpf !== -1 && colunas[idxCpf] ? colunas[idxCpf].trim() : '',
+                produto: idxProduto !== -1 && colunas[idxProduto] ? colunas[idxProduto].trim() : '',
+                valor: idxValor !== -1 && colunas[idxValor] ? colunas[idxValor].trim() : '',
+                data: idxData !== -1 && colunas[idxData] ? colunas[idxData].trim() : ''
+            };
 
-    bancoClientes = []; 
-    let listaTodosProdutos = new Set();
-
-    // Loop otimizado para ler milhares de linhas rapidamente
-    for (let i = 1; i < linhas.length; i++) {
-        const linhaLimpa = linhas[i].trim();
-        if (linhaLimpa === "") continue; 
-
-        const colunas = linhaLimpa.split(separador);
-
-        let nome = idxNome !== -1 ? colunas[idxNome]?.trim() : "Não Informado";
-        let cpf = idxCpf !== -1 ? colunas[idxCpf]?.trim() : "Não Informado";
-        let produtos = idxProdutos !== -1 ? colunas[idxProdutos]?.trim() : "Nenhum";
-        let total = idxTotal !== -1 ? colunas[idxTotal]?.trim() : "0,00";
-
-        bancoClientes.push({ nome, cpf, produtos, total });
-
-        if (produtos && produtos !== "Nenhum") {
-            produtos.split(',').forEach(p => listaTodosProdutos.add(p.trim().toUpperCase()));
+            dadosClientes.push(cliente);
+            if (cliente.produto) produtosSet.add(cliente.produto);
         }
-    }
 
-    // Atualiza contadores na tela
-    document.getElementById('stat-clientes').innerText = bancoClientes.length;
-    document.getElementById('stat-produtos').innerText = listaTodosProdutos.size || '-';
+        // Atualiza contadores na tela na hora
+        document.getElementById('stat-clientes').textContent = dadosClientes.length;
+        document.getElementById('stat-produtos').textContent = produtosSet.size;
 
-    // Libera a barra de pesquisa imediata
-    const inputPesquisa = document.getElementById('campo-pesquisa');
-    inputPesquisa.disabled = false;
-    inputPesquisa.placeholder = "🔍 Digite Nome, CPF ou Produto para buscar...";
+        const campo = document.getElementById('campo-pesquisa');
+        campo.disabled = false;
+        campo.value = '';
 
-    // Mostra a tabela inicial
-    renderizarTabela(bancoClientes);
-}
+        exibirTabela(dadosClientes);
+    };
+    leitor.readAsText(arquivo, 'UTF-8');
+});
 
-function renderizarTabela(dados) {
-    const corpoTabela = document.getElementById('corpo-tabela');
-    corpoTabela.innerHTML = ""; 
-
+// LIMITADOR DE LINHAS VISUAIS: É isso aqui que traz de volta a velocidade instantânea!
+function exibirTabela(dados) {
+    const tbody = document.getElementById('corpo-tabela');
+    
     if (dados.length === 0) {
-        corpoTabela.innerHTML = `<tr><td colspan="4" class="tabela-vazia">Nenhum resultado encontrado para a busca.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="5" class="tabela-vazia">Nenhum resultado encontrado.</td></tr>`;
         return;
     }
 
-    // 🚀 SEGREDO DA VELOCIDADE: Cria um bloco de memória temporário
-    const fragmento = document.createDocumentFragment();
+    // Mostra apenas os primeiros 200 na tela para o navegador carregar na hora.
+    // A pesquisa continua varrendo todos os milhares de registros normalmente!
+    const limiteVisual = dados.slice(0, 200);
 
-    // Limita a exibição inicial dos primeiros 100 resultados para performance visual instantânea,
-    // mas a busca continua varrendo a planilha inteira em segundo plano.
-    const limiteExibicao = dados.slice(0, 100);
-
-    limiteExibicao.forEach(item => {
-        const linha = document.createElement('tr');
-        linha.innerHTML = `
-            <td><strong>${item.nome}</strong></td>
+    let htmlApenas200 = '';
+    for (let i = 0; i < limiteVisual.length; i++) {
+        const item = limiteVisual[i];
+        htmlApenas200 += `<tr>
+            <td>${item.nome}</td>
             <td>${item.cpf}</td>
-            <td>${item.produtos}</td>
-            <td><span class="compras-badge">R$ ${item.total}</span></td>
-        `;
-        fragmento.appendChild(linha); // Insere no bloco temporário
-    });
-
-    // Injeta tudo de uma vez só na tela (Velocidade máxima!)
-    corpoTabela.appendChild(fragmento);
-}
-
-function filtrarDados() {
-    const termoBusca = document.getElementById('campo-pesquisa').value.toLowerCase();
-
-    // Se a barra estiver vazia, mostra a base padrão sem perder tempo processando
-    if (termoBusca === "") {
-        renderizarTabela(bancoClientes);
-        return;
+            <td>${item.produto}</td>
+            <td>${item.valor}</td>
+            <td>${item.data}</td>
+        </tr>`;
     }
-
-    // Filtro em alta velocidade varrendo a memória interna
-    const resultadoFiltrado = bancoClientes.filter(cliente => {
-        return cliente.nome.toLowerCase().includes(termoBusca) || 
-               cliente.cpf.toLowerCase().includes(termoBusca) || 
-               cliente.produtos.toLowerCase().includes(termoBusca);
-    });
-
-    renderizarTabela(resultadoFiltrado);
+    
+    tbody.innerHTML = htmlApenas200;
 }
+
+// Filtro de pesquisa dinâmica otimizado para alto desempenho
+document.getElementById('campo-pesquisa').addEventListener('input', function(e) {
+    const busca = e.target.value.toLowerCase();
+    
+    // Varre a memória na velocidade da luz
+    const filtrados = dadosClientes.filter(item => 
+        item.nome.toLowerCase().includes(busca) || 
+        item.cpf.toLowerCase().includes(busca) || 
+        item.produto.toLowerCase().includes(busca) ||
+        item.data.toLowerCase().includes(busca)
+    );
+
+    exibirTabela(filtrados);
+});
